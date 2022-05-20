@@ -5,7 +5,7 @@
 TRTC SDK 的自定义音频采集功能的开启分为两步，即：开启功能、发送音频帧给 SDK，具体 API 使用步骤见下文，同时我们也提供有对应平台的的API-Example：
 
 - [Android](https://github.com/LiteAVSDK/TRTC_Android/blob/main/TRTC-API-Example/Advanced/LocalVideoShare/src/main/java/com/tencent/trtc/mediashare/LocalVideoShareActivity.java)：
-- [iOS]()
+- [iOS](https://github.com/LiteAVSDK/TRTC_iOS/blob/main/TRTC-API-Example-OC/Advanced/LocalVideoShare/LocalVideoShareViewController.m)
 - [Windows]() 
 
 ### 开启自定义音频采集功能
@@ -18,6 +18,8 @@ TRTCCloud mTRTCCloud = TRTCCloud.shareInstance();
 mTRTCCloud.enableCustomAudioCapture(true);
 :::
 ::: iOS&Mac  ObjC
+self.trtcCloud = [TRTCCloud sharedInstance];
+[self.trtcCloud enableCustomAudioCapture:YES];
 :::
 ::: Windows  C++
 :::
@@ -38,7 +40,12 @@ trtcAudioFrame.timestamp = timestamp;
 mTRTCCloud.sendCustomAudioData(trtcAudioFrame);
 :::
 ::: iOS&Mac  ObjC
-
+TRTCAudioFrame *audioFrame = [[TRTCAudioFrame alloc] init];
+audioFrame.channels = audioChannels;
+audioFrame.sampleRate = audioSampleRate;
+audioFrame.data = pcmData;
+    
+[self.trtcCloud sendCustomAudioData:audioFrame];
 :::
 ::: Windows  C++
 
@@ -56,7 +63,7 @@ mTRTCCloud.sendCustomAudioData(trtcAudioFrame);
 声音模块是一个高复杂度的模块，SDK 需要严格控制声音设备的采集和播放逻辑。在某些场景下，当您需要获取远程用户的音频数据或者需要获取本地麦克风采集到的音频数据时，可以通过 TRTCCloud 对应的不同平台的接口，我们也提供有对应平台的的API-Example：
 
 - [Android](https://github.com/LiteAVSDK/TRTC_Android/blob/main/TRTC-API-Example/Advanced/LocalVideoShare/src/main/java/com/tencent/trtc/mediashare/LocalVideoShareActivity.java)：
-- [iOS]()
+- [iOS](https://github.com/LiteAVSDK/TRTC_iOS/blob/main/TRTC-API-Example-OC/Advanced/LocalVideoShare/LocalVideoShareViewController.m)
 - [Windows]() 
 
 
@@ -90,8 +97,28 @@ mTRTCCloud.setAudioFrameListener(new TRTCCloudListener.TRTCAudioFrameListener() 
         }
     }); 
 :::
-::: iOS&Mac
+::: iOS&Mac ObjC
+ [self.trtcCloud setAudioFrameDelegate:self];
+ // MARK: - TRTCAudioFrameDelegate
+ - (void)onCapturedRawAudioFrame:(TRTCAudioFrame *)frame {
+        NSLog(@"onCapturedRawAudioFrame");
+}
+ 
+- (void)onLocalProcessedAudioFrame:(TRTCAudioFrame *)frame {
+        NSLog(@"onLocalProcessedAudioFrame");
+}
 
+- (void)onRemoteUserAudioFrame:(TRTCAudioFrame *)frame userId:(NSString *)userId {
+        NSLog(@"onRemoteUserAudioFrame");
+}
+ 
+- (void)onMixedPlayAudioFrame:(TRTCAudioFrame *)frame {
+        NSLog(@"onMixedPlayAudioFrame");
+}
+
+- (void)onMixedAllAudioFrame:(TRTCAudioFrame *)frame {
+        NSLog(@"onMixedAllAudioFrame");
+}
 :::
 ::: Windows
 

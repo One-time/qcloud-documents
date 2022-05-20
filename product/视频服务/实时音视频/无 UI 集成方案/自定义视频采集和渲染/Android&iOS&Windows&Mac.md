@@ -5,7 +5,7 @@
 TRTC SDK 的自定义视频采集功能的开启分为两步，即：开启功能、发送视频帧给 SDK，具体 API 使用步骤见下文，同时我们也提供有对应平台的的API-Example：
 
 - [Android](https://github.com/LiteAVSDK/TRTC_Android/blob/main/TRTC-API-Example/Advanced/LocalVideoShare/src/main/java/com/tencent/trtc/mediashare/LocalVideoShareActivity.java)
-- [iOS]()
+- [iOS](https://github.com/LiteAVSDK/TRTC_iOS/blob/main/TRTC-API-Example-OC/Advanced/LocalVideoShare/LocalVideoShareViewController.m)
 - [Windows](https://github.com/LiteAVSDK/TRTC_Windows/blob/main/TRTC-API-Example-C++/TRTC-API-Example-Qt/src/TestCustomCapture/test_custom_capture.cpp) 
 
 ### 开启自定义视频采集功能
@@ -18,6 +18,8 @@ TRTCCloud mTRTCCloud = TRTCCloud.shareInstance();
 mTRTCCloud.enableCustomVideoCapture(TRTCCloudDef.TRTC_VIDEO_STREAM_TYPE_BIG, true);
 :::
 ::: iOS&Mac  ObjC
+self.trtcCloud = [TRTCCloud sharedInstance];
+[self.trtcCloud enableCustomVideoCapture:TRTCVideoStreamTypeBig enable:YES];
 :::
 ::: Windows  C++
 :::
@@ -46,7 +48,14 @@ videoFrame.bufferType = TRTCCloudDef.TRTC_VIDEO_BUFFER_TYPE_TEXTURE;
 mTRTCCloud.sendCustomVideoData(TRTCCloudDef.TRTC_VIDEO_STREAM_TYPE_BIG, videoFrame);
 :::
 ::: iOS&Mac  ObjC
-
+// 在 iOS/Mac 平台上，摄像头原生采集的视频格式即是 NV12，原生支持且性能最佳的视频帧格式是CVPixelBufferRef，同时支持I420、OpenGL 2D纹理格式。此处以CVPixelBufferRef为例，推荐！
+TRTCVideoFrame *videoFrame = [[TRTCVideoFrame alloc] init];
+videoFrame.pixelFormat = TRTCVideoPixelFormat_NV12;
+videoFrame.bufferType = TRTCVideoBufferType_PixelBuffer;
+videoFrame.pixelBuffer = imageBuffer;
+videoFrame.timestamp = timeStamp;
+        
+[[TRTCCloud sharedInstance] sendCustomVideoData:TRTCVideoStreamTypeBig frame:videoFrame];   
 :::
 ::: Windows  C++
 
@@ -62,8 +71,8 @@ mTRTCCloud.sendCustomVideoData(TRTCCloudDef.TRTC_VIDEO_STREAM_TYPE_BIG, videoFra
 
 自定义渲染主要分为：本地预览画面的渲染、和远端用户画面的渲染，基本原理：设置本地/远端的自定义渲染回调，然后 TRTC SDK 会通过回调函数`onRenderVideoFrame`中传递出来对应的视频帧（即TRTCVideoFrame），然后就开发者可以根据收到的视频帧进行自定义渲染了，这个流程需要具备一定的OpenGL 基础，我们也提供有对应平台的的API-Example：
 
-- [Android]()：
-- [iOS]()
+- [Android](https://github.com/LiteAVSDK/TRTC_Android/blob/main/TRTC-API-Example/Advanced/LocalVideoShare/src/main/java/com/tencent/trtc/mediashare/LocalVideoShareActivity.java)：
+- [iOS](https://github.com/LiteAVSDK/TRTC_iOS/blob/aa3026c07baeda553aec491702382683d5486a32/TRTC-API-Example-Swift/CustomCapture/testCustomVideo/TestRenderVideoFrame.m)
 - [Windows](https://github.com/LiteAVSDK/TRTC_Windows/blob/main/TRTC-API-Example-C++/TRTC-API-Example-Qt/src/TestCustomCapture/test_custom_capture.cpp) 
 
 
@@ -73,12 +82,13 @@ mTRTCCloud.sendCustomVideoData(TRTCCloudDef.TRTC_VIDEO_STREAM_TYPE_BIG, videoFra
 mTRTCCloud.setLocalVideoRenderListener(TRTCCloudDef.TRTC_VIDEO_PIXEL_FORMAT_Texture_2D, TRTCCloudDef.TRTC_VIDEO_BUFFER_TYPE_TEXTURE, new TRTCCloudListener.TRTCVideoRenderListener() {
     @Override
     public void onRenderVideoFrame(String suserId int streamType, TRTCCloudDef.TRTCVideoFrame frame) {
-		// 详见TRTC-API-Example 中自定义渲染的工具类：com.tencent.trtc.mediashare.helper.CustomFrameRender  
+        // 详见TRTC-API-Example 中自定义渲染的工具类：com.tencent.trtc.mediashare.helper.CustomFrameRender  
     }
 });
 :::
-::: iOS&Mac
-
+::: iOS&Mac ObjC
+self.trtcCloud = [TRTCCloud sharedInstance];
+[self.trtcCloud setLocalVideoRenderDelegate:self pixelFormat:TRTCVideoPixelFormat_NV12 bufferType:TRTCVideoBufferType_PixelBuffer];
 :::
 ::: Windows
 
@@ -92,12 +102,32 @@ mTRTCCloud.setLocalVideoRenderListener(TRTCCloudDef.TRTC_VIDEO_PIXEL_FORMAT_Text
 mTRTCCloud.setRemoteVideoRenderListener(userId, TRTCCloudDef.TRTC_VIDEO_PIXEL_FORMAT_I420, TRTCCloudDef.TRTC_VIDEO_BUFFER_TYPE_BYTE_ARRAY, new TRTCCloudListener.TRTCVideoRenderListener() {
     @Override
     public void onRenderVideoFrame(String userId, int streamType, TRTCCloudDef.TRTCVideoFrame frame) {
-		 // 详见TRTC-API-Example 中自定义渲染的工具类：com.tencent.trtc.mediashare.helper.CustomFrameRender  
+         // 详见TRTC-API-Example 中自定义渲染的工具类：com.tencent.trtc.mediashare.helper.CustomFrameRender  
     }
 });
 :::
-::: iOS&Mac
-
+::: iOS&Mac ObjC
+- (void)onRenderVideoFrame:(TRTCVideoFrame *)frame 
+                    userId:(NSString *)userId 
+                streamType:(TRTCVideoStreamType)streamType
+{
+    //userId是nil时为本地画面，否则为远端画面
+    CFRetain(frame.pixelBuffer);
+    __weak __typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        TestRenderVideoFrame *strongSelf = weakSelf;
+        UIImageView* videoView = nil;
+        if (userId) {
+            videoView = [strongSelf.userVideoViews objectForKey:userId];
+        }
+        else {
+            videoView = strongSelf.localVideoView;
+        }
+        videoView.image = [UIImage imageWithCIImage:[CIImage imageWithCVImageBuffer:frame.pixelBuffer]];
+        videoView.contentMode = UIViewContentModeScaleAspectFit;
+        CFRelease(frame.pixelBuffer);
+    });
+}
 :::
 ::: Windows
 ```
